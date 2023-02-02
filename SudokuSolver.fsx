@@ -32,24 +32,20 @@ let input =
     ]
 
 let findPotentials (inp:board) =
-
-
-
     let w = List.length inp[0]
     let h = List.length inp
 
     let hGroups = inp
-
     let vGroups : int list list = 
             [for i in 0..h-1 ->
                 [for j in 0..w-1 ->
-                    (inp[j][i])] ]// |> List.filter (fun elm -> elm <> 0)]
-            
+                    (inp[j][i])] ]
 
     let subGroups = 
         [for i in 0..h-1 -> 
             [for j in 0..w-1 -> 
-                inp[j/a+i/b*b][j%a+a*(i%b)]] |> List.filter (fun elm -> elm <> 0)]
+                inp[j/a+b*(i/b)][j%a+a*(i%b)]] |> List.filter (fun elm -> elm <> 0)]
+                // ... don't ask.
 
     let indexer ((y,x):int*int) (n:int) (t:direction) =
         if t = Forw then
@@ -70,10 +66,16 @@ let findPotentials (inp:board) =
             let row = y
             (row,col)
 
+(* Method of getting diagonals:
+                      1 N N    1
+1 2 3    1 2 3 N N    2 4 N    2 4
+4 5 6 -> N 4 5 6 N -> 3 5 7 -> 3 5 7
+7 8 9    N N 7 8 9    N 6 8    6 8
+                      N N 9    9      Reverse input lists for other diagonal*)
     let getDiagonals (b:board) =
         let diagLength = 2*n-1
         [for row in 0..diagLength - 1 ->
-            [for col in 0..(n - 1) ->
+            [for col in 0..(n - 1) -> 
                 if (row < col) || (col <= row-n) then None else Some (b[col][row - col]) ] |>
                     List.filter (fun x -> not (x = None)) |> 
                     List.map (fun x -> Option.get x) ] 
@@ -82,32 +84,30 @@ let findPotentials (inp:board) =
         inp |>
         List.map (fun sub -> List.rev sub) |>
         getDiagonals
-
-
     // Done with groups. 
-    let fil (filter:int list) (input:int list) : int list =
+
+    let filterOut (filter:int list) (input:int list) : int list =
         input |>
         List.filter (fun x -> not (List.exists (fun y -> y = x) filter))
 
     let filSun (row:int) (col:int) : int list = //spits out the numbers to filter against
-
         let rayCheck (theRow:int list) (col:int) (sCol:int) =
-            // ALL COORDINATES HERE ARE TRANSPOSED
-            if col < sCol then //left side (but reversed, so actually right)
-                let minN: int = theRow[col+1..sCol-1]
+            // consider | A x B SUN C x D | where x are possible field placements
+            if col < sCol then 
+                let minN: int = theRow[col+1..sCol-1]   // Looks at section B
                                 |> List.filter (fun elm -> elm <> 0)
                                 |> (fun s -> List.min (n-(sCol-col)+2::s))
-                let maxN:int = theRow[0..col-1]
+                let maxN:int = theRow[..col-1]         // Looks at section A
                                 |> List.filter (fun elm -> elm <> 0)
                                 |> (fun s -> List.max (col::s))
 
                 [0..maxN]@[minN..n]
             else if col > sCol then
-                let minN: int = theRow[sCol+1..col-1]
+                let minN: int = theRow[sCol+1..col-1]   // Looks at section C
                                 |> List.filter (fun elm -> elm <> 0)
                                 |> (fun s-> List.min (n-(col-sCol)+2::s))
                 let edge = List.length theRow
-                let maxN:int = theRow[col+1..]
+                let maxN:int = theRow[col+1..]          // Looks at section D
                                 |> List.filter (fun elm -> elm <> 0)
                                 |> (fun s-> List.max (edge-col-1::s))
                 [0..maxN]@[minN..n]
@@ -135,13 +135,13 @@ let findPotentials (inp:board) =
 
     let filters (row:int) (col:int) : int list =
         let normalSudokuRules = [1..n] |>
-                                fil hGroups[row] |>
-                                fil vGroups[col] |>
-                                fil subGroups[col/a+(row/b)*b]
+                                filterOut hGroups[row] |>
+                                filterOut vGroups[col] |>
+                                filterOut subGroups[col/a+(row/b)*b]
         match sun with
             None -> normalSudokuRules
             | Some coord ->
-                normalSudokuRules |> fil (filSun row col)
+                normalSudokuRules |> filterOut (filSun row col)
 
     let getEmptyFields board =
         let (h, w) = List.length board, List.length board.[0]
@@ -172,7 +172,7 @@ let rec solver (brd: int list list) =
         printfn ""
     else
         let ((x,y),p) = poss[0]
-        for number in p do
+        for number in p do // silently passes in case of dead end
             let thisBoard : int list list= 
                 List.mapi (fun i (lst:int list) -> 
                     if i = x then
