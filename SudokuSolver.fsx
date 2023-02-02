@@ -61,13 +61,13 @@ let findPotentials (inp:board) =
             let col = min x y
             let row = (n-1)-(x-y)
             (row,col)
-        else if t = Horiz then
-            let col = x
-            let row = y
-            (row,col)
-        else
+        else if t = Vert then
             let col = y
             let row = x
+            (row,col)
+        else //if t = Horiz then
+            let col = x
+            let row = y
             (row,col)
 
     let getDiagonals (b:board) =
@@ -145,7 +145,7 @@ let findPotentials (inp:board) =
             | Some coord ->
                 normalSudokuRules |> fil (filSun row col)
 
-    let rec getEmptyFields board =
+    let getEmptyFields board =
         let h, w = List.length board, List.length board.[0]
         let rec helper row col =
             if row = h then []

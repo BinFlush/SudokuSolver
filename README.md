@@ -8,5 +8,8 @@
 from the sun
 * The fields that they pass through
 need to take strictly lower values accordingly.
-* The center of the sun is not part of any ray.\
+* The center of the sun is not part of any ray.
+## Algo
+For every attempted field entry, every other field is polled for possible values,\
+the fields are then sorted by length of possible value list, and the first one is tried. This hopefully results in "shortest path to solution".\
 run with `dotnet fsi SudokuSolver.fsx`
