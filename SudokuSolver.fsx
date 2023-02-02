@@ -1,15 +1,4 @@
-﻿// Sudoku solver for traditional sudokus
-// as well as variants with non-square subgroups (a X b)
-// Can also include a sun-rule.
-// # Sun rule
-// If a field is defined as a sun, it sends rays in all
-// 4 straight and all 4 diagonal directions.
-// The rays loose their intensity as they travel away
-// from the sun, and the fields that they pass through
-// need to take strictly lower values accordingly.
-// The center of the sun is not part of any ray.
-
-type field = int
+﻿type field = int
 type board = field list list
 type direction = Forw | Backw | Horiz | Vert
 
@@ -71,13 +60,14 @@ let findPotentials (inp:board) =
 1 2 3    1 2 3 N N    2 4 N    2 4
 4 5 6 -> N 4 5 6 N -> 3 5 7 -> 3 5 7
 7 8 9    N N 7 8 9    N 6 8    6 8
-                      N N 9    9      Reverse input lists for other diagonal*)
+                      N N 9    9      Reverse input lists for other diagonal
+*)
     let getDiagonals (b:board) =
         let diagLength = 2*n-1
         [for row in 0..diagLength - 1 ->
             [for col in 0..(n - 1) -> 
                 if (row < col) || (col <= row-n) then None else Some (b[col][row - col]) ] |>
-                    List.filter (fun x -> not (x = None)) |> 
+                    List.filter (fun x -> x <> None) |> 
                     List.map (fun x -> Option.get x) ] 
     let fsGroups = getDiagonals inp
     let bsGroups =
