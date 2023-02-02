@@ -9,3 +9,4 @@ from the sun
 * The fields that they pass through
 need to take strictly lower values accordingly.
 * The center of the sun is not part of any ray.
+run with `dotnet fsi SudokuSolver.fsx`
