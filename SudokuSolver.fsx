@@ -113,24 +113,22 @@ let findPotentials (inp:board) =
                 [0..maxN]@[minN..n]
             else []
 
-
-
         let (sRow, sCol) = Option.get sun
         let (bsRow,bsCol) = indexer (row,col) n Backw
         let (sBsRow,sBsCol) = indexer (sRow,sCol) n Backw
 
-        if row = sRow && col <> sCol then
+        if row = sRow && col <> sCol then       // Horizontal match
             rayCheck inp[row] col sCol 
-        else if col = sCol && row <> sRow then
+        else if col = sCol && row <> sRow then  // Vertical match
             rayCheck vGroups[col] row sRow
 
         // fs diagonal
-        else if col+row = sCol+sRow then
+        else if col+row = sCol+sRow then        // Forward diagonal match
             let (diagRow,diagCol) = indexer (row,col) n Forw
             let (sDiagRow,sDiagCol) = indexer (sRow,sCol) n Forw
             rayCheck fsGroups[diagRow] diagCol sDiagCol
 
-        else if bsRow = sBsRow && bsCol <> sBsCol then
+        else if bsRow = sBsRow && bsCol <> sBsCol then // Backward diagonal match
             rayCheck bsGroups[bsRow] bsCol sBsCol
         else []
 
@@ -146,7 +144,7 @@ let findPotentials (inp:board) =
                 normalSudokuRules |> fil (filSun row col)
 
     let getEmptyFields board =
-        let h, w = List.length board, List.length board.[0]
+        let (h, w) = List.length board, List.length board.[0]
         let rec helper row col =
             if row = h then []
             else if col = w then helper (row + 1) 0
@@ -155,17 +153,20 @@ let findPotentials (inp:board) =
                 ((row, col), possibleValues) :: helper row (col + 1)
             else helper row (col + 1)
         helper 0 0
-    //filSun 4 6 
+
     getEmptyFields inp |> List.sortBy (fun (_,poss) -> List.length poss)
+
+
 let printBoard board =
     for i in board do
         printfn "%A" i
 
+
 let mutable solNo = 0
 let rec solver (brd: int list list) =
     let poss = findPotentials brd
-    if List.length poss = 0 then
-        solNo <- solNo + 1
+    if List.length poss = 0 then    // all fields occupied.
+        solNo <- solNo + 1          // I must have found a solution.
         printfn "SOLUTION %A" solNo
         printBoard brd
         printfn ""
