@@ -3,21 +3,21 @@ type board = field list list
 type direction = Forw | Backw | Horiz | Vert
 
 let n = 8               // Size of board
-let (a,b) = (4,2)       // the width and height of subgroups (3x3 for normal sudoku)
-let sun = Some (3, 3)   // Position of sun. Set to None if no sun-rule
+let (b,a) = (2,4)       // the height and width (respectively) of subgroups (3x3 for normal sudoku)
+let sun = Some (4, 4)   // Position of sun (row, column). Set to None if no sun-rule
 let input = 
     [
-        [0; 0; 0; 0;  0; 0; 0; 6]
-        [0; 0; 6; 0;  0; 0; 0; 2]
+        [0; 0; 0; 0;  2; 0; 0; 7]
+        [0; 0; 6; 0;  0; 0; 0; 0]
 
-        [0; 0; 0; 0;  0; 0; 0; 0]
+        [0; 0; 0; 0;  0; 0; 5; 0]
+        [0; 0; 0; 4;  0; 0; 0; 0]
+
+        [3; 0; 0; 0;  0; 0; 0; 0]
         [0; 0; 0; 0;  0; 0; 0; 0]
 
-        [0; 0; 0; 0;  0; 0; 1; 3]
-        [0; 3; 0; 0;  0; 0; 0; 0]
-
-        [0; 0; 0; 0;  0; 0; 0; 0]
-        [0; 0; 0; 0;  0; 0; 0; 0]
+        [2; 0; 0; 0;  0; 0; 0; 0]
+        [0; 0; 0; 7;  0; 0; 0; 0]
     ]
 
 let findPotentials (inp:board) =
@@ -147,9 +147,35 @@ let findPotentials (inp:board) =
     getEmptyFields inp |> List.sortBy (fun (_,poss) -> List.length poss)
 
 
-let printBoard board =
-    for i in board do
-        printfn "%A" i
+let printBoard board n (a,b) (sun:(int*int) option) =
+    let colGroups = n/a
+    let rowGroups = n/b
+    let rowSeperator = "".PadRight(2*n+1,'-')
+    let st = 
+        board |>
+        List.map (fun l -> List.map (fun elm -> elm.ToString()) l)
+    printfn "%s" rowSeperator 
+    for i in 0..n-1 do
+        for j in 0..n-1 do
+            if sun.IsSome && (i,j) = sun.Value then
+                printf "<"
+            else if sun.IsSome && sun.Value = (i,j-1) then
+                printf ">"
+            else if (j)%a = 0 then
+                printf "|"
+            else printf " "
+            printf "%s" <| st[i][j]
+
+        if sun.IsSome && sun.Value = (i,n-1) then
+            printf ">"
+        else printf "|"
+        let rowNumber = i+1
+        if rowNumber%b = 0 && rowNumber < n then
+            printfn ""
+            printf "%s" rowSeperator 
+        printfn ""
+    printfn "%s" rowSeperator 
+
 
 
 let mutable solNo = 0
@@ -157,9 +183,10 @@ let rec solver (brd: int list list) =
     let poss = findPotentials brd
     if List.length poss = 0 then    // all fields occupied.
         solNo <- solNo + 1          // I must have found a solution.
+        if solNo > 1 then
+            printfn ""
         printfn "SOLUTION %A" solNo
-        printBoard brd
-        printfn ""
+        printBoard brd n (a,b) sun
     else
         let ((x,y),p) = poss[0]
         for number in p do // silently passes in case of dead end
