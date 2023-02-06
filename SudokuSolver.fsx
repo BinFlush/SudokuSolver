@@ -1,8 +1,5 @@
-﻿type field = int
-type board = field list list
-type direction = Forw | Backw | Horiz | Vert
+﻿type direction = Forw | Backw
 
-let n = 8               // Size of board
 let (b,a) = (2,4)       // the height and width (respectively) of subgroups (3x3 for normal sudoku)
 let sun = Some (4, 4)   // Position of sun (row, column). Set to None if no sun-rule
 let input = 
@@ -20,21 +17,18 @@ let input =
         [0; 0; 0; 7;  0; 0; 0; 0]
     ]
 
-let findPotentials (inp:board) =
-    let w = List.length inp[0]
-    let h = List.length inp
-
+let n = List.length input 
+let findPotentials (inp:int list list) =
     let hGroups = inp
     let vGroups : int list list = 
-            [for i in 0..h-1 ->
-                [for j in 0..w-1 ->
+            [for i in 0..n-1 ->
+                [for j in 0..n-1 ->
                     (inp[j][i])] ]
 
     let subGroups = 
-        [for i in 0..h-1 -> 
-            [for j in 0..w-1 -> 
+        [for i in 0..n-1 -> 
+            [for j in 0..n-1 -> 
                 inp[j/a+b*(i/b)][j%a+a*(i%b)]] |> List.filter (fun elm -> elm <> 0)]
-                // ... don't ask.
 
     let indexer ((y,x):int*int) (n:int) (t:direction) =
         if t = Forw then
@@ -42,27 +36,12 @@ let findPotentials (inp:board) =
             let bend = max 0 (row - (n-1))
             let col = row - x - bend
             (row,col)
-        else if t = Backw then
+        else// t = Backw then
             let col = min x y
             let row = (n-1)-(x-y)
             (row,col)
-        else if t = Vert then
-            let col = y
-            let row = x
-            (row,col)
-        else //if t = Horiz then
-            let col = x
-            let row = y
-            (row,col)
 
-(* Method of getting diagonals:
-                      1 N N    1
-1 2 3    1 2 3 N N    2 4 N    2 4
-4 5 6 -> N 4 5 6 N -> 3 5 7 -> 3 5 7
-7 8 9    N N 7 8 9    N 6 8    6 8
-                      N N 9    9      Reverse input lists for other diagonal
-*)
-    let getDiagonals (b:board) =
+    let getDiagonals (b:int list list) =
         let diagLength = 2*n-1
         [for row in 0..diagLength - 1 ->
             [for col in 0..(n - 1) -> 
@@ -82,25 +61,21 @@ let findPotentials (inp:board) =
 
     let filSun (row:int) (col:int) : int list = //spits out the numbers to filter against
         let rayCheck (theRow:int list) (col:int) (sCol:int) =
-            // consider | A x B SUN C x D | where x are possible field placements
-            if col < sCol then 
-                let minN: int = theRow[col+1..sCol-1]   // Looks at section B
-                                |> List.filter (fun elm -> elm <> 0)
-                                |> (fun s -> List.min (n-(sCol-col)+2::s))
-                let maxN:int = theRow[..col-1]         // Looks at section A
+            // consider | A x B SUN B x A | where x are possible field placements
+            let helper (theRow:int list) (col:int) (sCol:int) : int list =
+                let maxN:int = theRow[..col-1]         // Looks at section A*
                                 |> List.filter (fun elm -> elm <> 0)
                                 |> (fun s -> List.max (col::s))
+                let minN: int = theRow[col+1..sCol-1]   // Looks at section B*
+                                |> List.filter (fun elm -> elm <> 0)
+                                |> (fun s -> List.min (n-(sCol-col)+2::s))
+                [0..maxN]@[minN..n]
 
-                [0..maxN]@[minN..n]
-            else if col > sCol then
-                let minN: int = theRow[sCol+1..col-1]   // Looks at section C
-                                |> List.filter (fun elm -> elm <> 0)
-                                |> (fun s-> List.min (n-(col-sCol)+2::s))
-                let edge = List.length theRow
-                let maxN:int = theRow[col+1..]          // Looks at section D
-                                |> List.filter (fun elm -> elm <> 0)
-                                |> (fun s-> List.max (edge-col-1::s))
-                [0..maxN]@[minN..n]
+            if col < sCol then 
+                helper theRow col sCol
+            else if col > sCol then 
+                let len = List.length theRow
+                helper (List.rev theRow) (len-1-col) (len-1-sCol)
             else []
 
         let (sRow, sCol) = Option.get sun
@@ -112,7 +87,6 @@ let findPotentials (inp:board) =
         else if col = sCol && row <> sRow then  // Vertical match
             rayCheck vGroups[col] row sRow
 
-        // fs diagonal
         else if col+row = sCol+sRow then        // Forward diagonal match
             let (diagRow,diagCol) = indexer (row,col) n Forw
             let (sDiagRow,sDiagCol) = indexer (sRow,sCol) n Forw
@@ -121,7 +95,6 @@ let findPotentials (inp:board) =
         else if bsRow = sBsRow && bsCol <> sBsCol then // Backward diagonal match
             rayCheck bsGroups[bsRow] bsCol sBsCol
         else []
-
 
     let filters (row:int) (col:int) : int list =
         let normalSudokuRules = [1..n] |>
@@ -133,19 +106,16 @@ let findPotentials (inp:board) =
             | Some coord ->
                 normalSudokuRules |> filterOut (filSun row col)
 
-    let getEmptyFields board =
-        let (h, w) = List.length board, List.length board.[0]
-        let rec helper row col =
-            if row = h then []
-            else if col = w then helper (row + 1) 0
+    let getEmptyFields (board:int list list) =
+        let rec helper (row:int) (col:int) =
+            if row = n then []
+            else if col = n then helper (row + 1) 0
             else if board.[row].[col] = 0 then
                 let possibleValues = filters row col
                 ((row, col), possibleValues) :: helper row (col + 1)
             else helper row (col + 1)
         helper 0 0
-
     getEmptyFields inp |> List.sortBy (fun (_,poss) -> List.length poss)
-
 
 let printBoard board n (a,b) (sun:(int*int) option) =
     let colGroups = n/a
@@ -157,26 +127,20 @@ let printBoard board n (a,b) (sun:(int*int) option) =
     printfn "%s" rowSeperator 
     for i in 0..n-1 do
         for j in 0..n-1 do
-            if sun.IsSome && (i,j) = sun.Value then
-                printf "<"
-            else if sun.IsSome && sun.Value = (i,j-1) then
-                printf ">"
-            else if (j)%a = 0 then
-                printf "|"
+            if sun.IsSome && (i,j) = sun.Value then printf "<"
+            else if sun.IsSome && sun.Value = (i,j-1) then printf ">"
+            else if (j)%a = 0 then printf "|"
             else printf " "
             printf "%s" <| st[i][j]
 
-        if sun.IsSome && sun.Value = (i,n-1) then
-            printf ">"
+        if sun.IsSome && sun.Value = (i,n-1) then printf ">"
         else printf "|"
         let rowNumber = i+1
-        if rowNumber%b = 0 && rowNumber < n then
+        if rowNumber%b = 0 && rowNumber < n then 
             printfn ""
             printf "%s" rowSeperator 
         printfn ""
     printfn "%s" rowSeperator 
-
-
 
 let mutable solNo = 0
 let rec solver (brd: int list list) =
@@ -198,5 +162,3 @@ let rec solver (brd: int list list) =
             solver thisBoard
 
 do solver input
-
-
